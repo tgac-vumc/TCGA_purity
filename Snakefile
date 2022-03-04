@@ -3,8 +3,7 @@ configfile: "config.yaml"
 # 0.1 Prepare wildcards and variables
 data_dir = config["all"]["data_dir"]
 
-#-------------------------------------------------------------------------------------------------------------------
-# 0.2 Obtain samples dict
+(subtypes,projects,hash_samples,files,) = glob_wildcards(data_dir + "{subtype}/{project}/harmonized/Copy_Number_Variation/Masked_Copy_Number_Segment/{hash_sample}/{file}")
 
 #-------------------------------------------------------------------------------------------------------------------
 # 0.3 specify target rules
