@@ -1,0 +1,3 @@
+---
+all:
+    data_dir: "../data/"        # Specify main data directory
