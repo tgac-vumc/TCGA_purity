@@ -1,3 +1,8 @@
 ---
 all:
     data_dir: "../data/"        # Specify main data directory
+
+ACE:
+    ploidies: [2,4]
+    method: "RMSE"
+    penalty: 0
