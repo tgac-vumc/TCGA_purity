@@ -11,7 +11,7 @@
 #
 # History:
 #  11-03-2022: File creation
-#  23-03-2022: 
+#  23-03-2022: Write custom ACE function
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 0.1  Import Libraries
 #-------------------------------------------------------------------------------
@@ -24,8 +24,9 @@ if(exists("snakemake")){
     sample <- snakemake@wildcards[["sample"]]
     ploidies <-  snakemake@params[["ploidies"]]
     method <- snakemake@params[["method"]]
-    method <- snakemake@params[["penalty"]]
+    penalty <- snakemake@params[["penalty"]]
     fit_out <-  snakemake@output[["fit"]]
+    errorgraph_out <- snakemake@output[["errorgraph"]]
 
 }else{
     Segments <- "../data/copynumber/segments/TCGA-95-7039_segments.txt"

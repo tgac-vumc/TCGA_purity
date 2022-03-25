@@ -1,0 +1,7 @@
+channels:
+  - conda-forge
+dependencies:
+  - r-dplyr
+  - r-tidyr
+  - r-tibble
+  - r-ggpubr

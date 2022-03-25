@@ -14,7 +14,7 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 0.1  Import Libraries
 #-------------------------------------------------------------------------------
-suppressMessages(library(ggplot2))
+suppressWarnings(library(ggplot2))
 #-------------------------------------------------------------------------------
 
 
@@ -124,6 +124,7 @@ Run_ACE <- function(segmentdata, Segments, ploidies, sample, method, penalty, fi
         if(q == 2){
             Plot_errors(tempdf, minimadf,errorgraph_out)
         }else{
+            suppressWarnings(dir.create(dirname(gsub("2N",paste0(q,"N"),errorgraph_out)), recursive = T))
             Plot_errors(tempdf, minimadf,gsub("2N",paste0(q,"N"),errorgraph_out))
         }
         
@@ -131,8 +132,8 @@ Run_ACE <- function(segmentdata, Segments, ploidies, sample, method, penalty, fi
         if(q == 2){
             write.table(fitpicker, file = fit_out )
         }else{
+            suppressWarnings(dir.create(dirname(gsub("2N",paste0(q,"N"),fit_out)), recursive = T))
             write.table(fitpicker, file = gsub("2N",paste0(q,"N"),fit_out), row.names = F, quote = F)
-
         }
     }
 
