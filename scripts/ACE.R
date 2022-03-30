@@ -23,21 +23,19 @@ if(exists("snakemake")){
     Segments <- snakemake@input[["segments"]]
     sample <- snakemake@wildcards[["sample"]]
     binsize <-  snakemake@params[["binsize"]]
-    ploidies <-  snakemake@params[["ploidies"]]
     method <- snakemake@params[["method"]]
     penalty <- snakemake@params[["penalty"]]
     fit_out <-  snakemake@output[["fit"]]
-    errorgraph_out <- snakemake@output[["errorgraph"]]
+    errormatrix_out <- snakemake@output[["errormatrix"]]
 
 }else{
     Segments <- "../data/copynumber/segments/TCGA-55-A491_segments.txt"
     sample <-  "TCGA-55-A491"
-    binsize <- 1
-    ploidies <-  c(2,4)
+    binsize <- 1000
     method <- "RMSE"
     penalty <- 0
-    fit_out <-  "../data/copynumber/ACE/TCGA-95-7039/2N/fits.txt"
-    errorgraph_out <- "../data/copynumber/ACE/TCGA-95-7039/2N/errorgraph.svg"
+    fit_out <-  "../data/copynumber/ACE/TCGA-95-7039/squaremodel/fits.txt"
+    errormatrix_out <- "../data/copynumber/ACE/TCGA-95-7039/squaremodel/errormatrix.svg"
 }
 
 
@@ -66,5 +64,11 @@ segmentdata <- suppressWarnings(Concatenate_lengths(segmentvalues,segmentdata))
 #-------------------------------------------------------------------------------
 # 2.2 Run ACE
 #-------------------------------------------------------------------------------
-Run_ACE(segmentdata, Segments, ploidies, sample, method, penalty, fit_out, errorgraph_out)
+Run_ACE(segmentdata, Segments, sample, method, penalty, fit_out, errormatrix_out)
+
+ACE_purities <-
+    tibble::tribble(
+                ~sample,~ACE,
+                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map(ACE_fits, ~read.table(.x, header = T))) %>%
+    tidyr::unnest(cols = c(sample, ACE))
 

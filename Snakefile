@@ -33,11 +33,10 @@ rule ACE:
     input:
         segments = "../data/copynumber/segments/{sample}_segments.txt"
     output:
-        fit = "../data/copynumber/ACE/{sample}/2N/fits.txt",
-        errorgraph = "../data/copynumber/ACE/{sample}/2N/errorgraph.svg"
+        fit = "../data/copynumber/ACE/{sample}/squaremodel/fits.txt",
+        errormatrix = "../data/copynumber/ACE/{sample}/squaremodel/errormatrix.svg"
     params:
         binsize = config['ACE']['binsize'],
-        ploidies = config['ACE']['ploidies'],
         method = config['ACE']["method"],
         penalty = config['ACE']['penalty']
     conda:
@@ -51,7 +50,7 @@ rule ACE:
 
 rule Compare_purity_measures:
     input:
-        ACE_fits = expand("../data/copynumber/ACE/{sample}/2N/fits.txt", sample = Samples),
+        ACE_fits = expand("../data/copynumber/ACE/{sample}/squaremodel/fits.txt", sample = Samples),
         Purities = "../data/purity/Tumor_purities.tsv"
     output:
         Scatterplots = "../plots/purity/Scatterplots_purity.svg",

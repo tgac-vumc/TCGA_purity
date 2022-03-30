@@ -24,7 +24,7 @@ if(exists("snakemake")){
     Purities <- snakemake@input[["Purities"]]
     Scatterplots_out <-  snakemake@output[["Scatterplots"]]
 }else{
-    ACE_fits <- Sys.glob("../data/copynumber/ACE/*/2N/fits.txt")
+    ACE_fits <- Sys.glob("../data/copynumber/ACE/*/squaremodel/fits.txt")
     Purities <-  "../data/purity/Tumor_purities.tsv"
     Scatterplots_out <- "../data/copynumber/ACE/TCGA-95-7039/2N/errorgraph.svg"
 }
@@ -35,7 +35,7 @@ if(exists("snakemake")){
 ACE_purities <-
     tibble::tribble(
                 ~sample,~ACE,
-                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x)[,2])) %>%
+                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x, header = T)[1,2])) %>%
     tidyr::unnest(cols = c(sample, ACE))
 
 # read TCGA purities
