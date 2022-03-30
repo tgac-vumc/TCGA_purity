@@ -11,12 +11,27 @@
 #
 # History:
 #  23-03-2022: File creation, write code
+#  30-03-2022: Create function to fix segmentdata
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 0.1  Import Libraries
 #-------------------------------------------------------------------------------
 suppressWarnings(library(ggplot2))
 #-------------------------------------------------------------------------------
-
+# Function to fix segments
+Concatenate_lengths <- function(segmentvalues,segmentdata){
+    # if segmentdata is valid do nothing
+    if(length(segmentdata$lengths) == length(segmentdata$values)){
+        return(segmentdata)
+    }else{
+        # find index where segmentvalues are concatenated
+        ix <- min(which(!segmentdata$values == segmentvalues))
+        # concatenate lengths
+        segmentdata$lengths[ix] <- segmentdata$lengths[ix-1] + segmentdata$lengths[ix]
+        # Remove redundant length
+        segmentdata$lengths <- segmentdata$lengths[-(ix-1)]
+        return(segmentdata)
+    }
+}
 
 # Plot errorlist
 Plot_errors <- function(tempdf, minimadf,outfile) {
@@ -35,7 +50,6 @@ Plot_errors <- function(tempdf, minimadf,outfile) {
 
 # Function to run ACE from segmentdata
 Run_ACE <- function(segmentdata, Segments, ploidies, sample, method, penalty, fit_out, errorgraph_out){
-
     # calculate standard
     standard <- median(rep(segmentdata$values,segmentdata$lengths))
     # create empty factors
@@ -106,7 +120,7 @@ Run_ACE <- function(segmentdata, Segments, ploidies, sample, method, penalty, fi
         fitpicker[1,2] <- minima[bfi]
         for (m in seq_along(minima)) {
             fitpicker[1,m+4] <- minima[m]
-            adjustedsegments <- q + ((Segments$Segment_Mean-standard)*(minima[m]*(q-2)+2))/(minima[m]*standard)
+            adjustedsegments <- q + ((2^Segments$Segment_Mean-standard)*(minima[m]*(q-2)+2))/(minima[m]*standard)
             df <- as.data.frame(adjustedsegments[seq_along(bin)])
             colnames(df) <- "segments"
             dfna <- na.exclude(df)
@@ -118,7 +132,7 @@ Run_ACE <- function(segmentdata, Segments, ploidies, sample, method, penalty, fi
             line1 <- paste0("Cellularity: ", minima[m])
             line2 <- paste0("Relative error: ", round(rerror[m], digits = 3))
         }
-        # Write information to file
+        
         
         # Plot errorgraph
         if(q == 2){
