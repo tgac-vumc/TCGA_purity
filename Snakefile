@@ -38,7 +38,8 @@ rule ACE:
     params:
         binsize = config['ACE']['binsize'],
         method = config['ACE']["method"],
-        penalty = config['ACE']['penalty']
+        penalty = config['ACE']['penalty'],
+        penploidy = config['ACE']['penploidy']
     conda:
         "envs/ACE.yaml"
     script:

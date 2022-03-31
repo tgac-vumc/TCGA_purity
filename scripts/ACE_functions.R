@@ -49,8 +49,10 @@ Plot_errors <- function(errordf, minimadf,sample, outfile) {
 
 # Function to run ACE (square_model) from segmentdata
 Run_ACE <- function(segmentdata, Segments,
-                    sample, method, penalty, fit_out, errormatrix_out,
-                    prows=100, ptop =5, pbottom = 1, penploidy = 0, cellularities = seq(5,100), highlightminima = TRUE){
+                    sample, method, penalty,penploidy, fit_out, errormatrix_out,
+                    #prows=4, # include only integer ploidy
+                    prows=100, # to include any ploidy
+                    ptop =5, pbottom = 1, cellularities = seq(5,100), highlightminima = TRUE){
     # calculate standard
     standard <- median(rep(segmentdata$values,segmentdata$lengths))
     # Initialize variables
@@ -60,7 +62,7 @@ Run_ACE <- function(segmentdata, Segments,
     listofploidy <- c()
     listofcellularity <- c()
     listoferrors <- c()
-    for (t in seq(0,prows)) {
+    for (t in seq(0,prows)){
         ploidy <- ptop-((ptop-pbottom)/prows)*t
         listofploidy <- append(listofploidy, rep(ploidy,length(fraction)))
         expected <- c()

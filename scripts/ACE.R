@@ -25,6 +25,7 @@ if(exists("snakemake")){
     binsize <-  snakemake@params[["binsize"]]
     method <- snakemake@params[["method"]]
     penalty <- snakemake@params[["penalty"]]
+    penploidy <- snakemake@params[["penploidy"]]
     fit_out <-  snakemake@output[["fit"]]
     errormatrix_out <- snakemake@output[["errormatrix"]]
 
@@ -33,11 +34,11 @@ if(exists("snakemake")){
     sample <-  "TCGA-55-A491"
     binsize <- 1000
     method <- "RMSE"
-    penalty <- 0
+    penalty <- 0.5
+    penploidy <- 0.5
     fit_out <-  "../data/copynumber/ACE/TCGA-95-7039/squaremodel/fits.txt"
     errormatrix_out <- "../data/copynumber/ACE/TCGA-95-7039/squaremodel/errormatrix.svg"
 }
-
 
 #-------------------------------------------------------------------------------
 # 1.1 Read data
@@ -64,11 +65,4 @@ segmentdata <- suppressWarnings(Concatenate_lengths(segmentvalues,segmentdata))
 #-------------------------------------------------------------------------------
 # 2.2 Run ACE
 #-------------------------------------------------------------------------------
-Run_ACE(segmentdata, Segments, sample, method, penalty, fit_out, errormatrix_out)
-
-ACE_purities <-
-    tibble::tribble(
-                ~sample,~ACE,
-                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map(ACE_fits, ~read.table(.x, header = T))) %>%
-    tidyr::unnest(cols = c(sample, ACE))
-
+Run_ACE(segmentdata, Segments, sample, method, penalty, penploidy, fit_out, errormatrix_out)
