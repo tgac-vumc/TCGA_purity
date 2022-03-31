@@ -12,11 +12,10 @@ Purity_Measures = ['ESTIMATE','ABSOLUTE','LUMP','IHC', 'ACE']
 # 0.3 specify target rules
 rule all:
     input:
-        "../plots/purity/Scatterplots_purity.svg"
-        
+        expand("../plots/purity/Scatterplots_purity_{ploidy}.svg", ploidy = config['ACE']['ploidies'])
 
 #++++++++++++++++++++++++++++++++++++++++++++++++ 1 PREPARE DATA  +++++++++++++++++++++++++++++++++++++++++++++++++
-# Migrate segmentfiles
+# Migrate segmentfile
 rule Migrate_files:
     input:
         paths
@@ -25,7 +24,6 @@ rule Migrate_files:
     run:
         Migrate_files(Sample_dict, input, data_dir)
 
-
 #++++++++++++++++++++++++++++++++++++++++++ 2 ESTIMATE PURITY WITH ACE  +++++++++++++++++++++++++++++++++++++++++++
 # Run ACE using a custom ACE script
 
@@ -33,33 +31,31 @@ rule ACE:
     input:
         segments = "../data/copynumber/segments/{sample}_segments.txt"
     output:
-        fit = "../data/copynumber/ACE/{sample}/2N/fits.txt",
-        errorgraph = "../data/copynumber/ACE/{sample}/2N/errorgraph.svg"
+        fit = "../data/copynumber/ACE/{sample}/{ploidy}/fits.txt",
+        errorgraph = "../data/copynumber/ACE/{sample}/{ploidy}/errorgraph.svg"
     params:
         binsize = config['ACE']['binsize'],
-        ploidies = config['ACE']['ploidies'],
         method = config['ACE']["method"],
-        penalty = config['ACE']['penalty']
+        penalty = config['ACE']['penalty'],
+        penploidy = config['ACE']['penploidy']
     conda:
         "envs/ACE.yaml"
     script:
         "scripts/ACE.R"
     
-        
 #++++++++++++++++++++++++++++++++++++++++++ 3 COMPARE PURITY MEASURES   +++++++++++++++++++++++++++++++++++++++++++
 # Plot scatterplots of purity estimates of different measures
 
 rule Compare_purity_measures:
     input:
-        ACE_fits = expand("../data/copynumber/ACE/{sample}/2N/fits.txt", sample = Samples),
+        ACE_fits = lambda wildcards: expand("../data/copynumber/ACE/{sample}/"+ wildcards.ploidy + "/fits.txt", sample = Samples),
         Purities = "../data/purity/Tumor_purities.tsv"
     output:
-        Scatterplots = "../plots/purity/Scatterplots_purity.svg",
+        Scatterplots = "../plots/purity/Scatterplots_purity_{ploidy}.svg",
     conda:
         "envs/R.yaml"
     script:
         "scripts/Compare_purity_measures.R"
-
 
 #+++++++++++++++++++++++++++++++++++++ 4 ESTIMATE CONSENSUS PURITY WITH ACE  ++++++++++++++++++++++++++++++++++++++
 # Estimate consensus purity including ACE (instead of ABSOLUTE)

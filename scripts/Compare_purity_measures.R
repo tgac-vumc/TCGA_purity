@@ -35,8 +35,9 @@ if(exists("snakemake")){
 ACE_purities <-
     tibble::tribble(
                 ~sample,~ACE,
-                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x)[,2])) %>%
+                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x, header=TRUE)[1,2])) %>%
     tidyr::unnest(cols = c(sample, ACE))
+
 
 # read TCGA purities
 Purities <- read.delim(Purities, stringsAsFactors = F)
@@ -88,3 +89,17 @@ cowplot::plot_grid(plotlist = plotlist, align = "hv")
 dev.off()
 
 
+svg(paste0(gsub(".svg","",Scatterplots_out),"_ACE.svg"), height = 4, width = 4)
+ggpubr::ggscatter(Purities, x = "ACE", y = "ABSOLUTE",
+                           add = "reg.line",
+                           add.params = list(color = "red"),
+                           conf.int = TRUE,
+                           palette = "jco",
+                           alpha = 0.5,
+                           size = 1,
+                           xlim = c(0,1),
+                           ylim = c(0,1))+
+    ggpubr::stat_cor(label.x = 0, label.y = 0) +
+    geom_abline(intercept = 0, slope = 1,linetype="dashed")
+    
+dev.off()

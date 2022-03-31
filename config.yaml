@@ -4,6 +4,7 @@ all:
 
 ACE:
     binsize: 10
-    ploidies: [2,4]
+    ploidies: ["2N","4N", "squaremodel"]
     method: "RMSE"
-    penalty: 0
+    penalty: 0.5
+    penploidy: 0.5
