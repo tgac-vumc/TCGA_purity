@@ -13,6 +13,7 @@
 #  23-03-2022: File creation, write code
 #  30-03-2022: Create function to fix segmentdata
 #  31-03-2022: Implement both squaremodel and fixed ploidy ACE
+#  08-04-2022: Create Add_normal_segments, edit concatenate lengths
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # 0.1  Import Libraries
 #-------------------------------------------------------------------------------
@@ -24,45 +25,76 @@ Concatenate_lengths <- function(segmentvalues,segmentdata){
     if(length(segmentdata$lengths) == length(segmentdata$values)){
         return(segmentdata)
     }else{
-        # find index where segmentvalues are concatenated
-        ix <- min(which(!segmentdata$values == segmentvalues))
-        # concatenate lengths
-        segmentdata$lengths[ix] <- segmentdata$lengths[ix-1] + segmentdata$lengths[ix]
-        # Remove redundant length
-        segmentdata$lengths <- segmentdata$lengths[-(ix-1)]
+        while(length(segmentdata$lengths) != length(segmentdata$values)){
+            # find index where segmentvalues are concatenated
+            ix <- min(which(!segmentdata$values == segmentvalues))
+            # concatenate lengths
+            segmentdata$lengths[ix] <- segmentdata$lengths[ix-1] + segmentdata$lengths[ix]
+            # Remove redundant length
+            segmentdata$lengths <- segmentdata$lengths[-(ix-1)]
+        }
         return(segmentdata)
     }
 }
 
-if(ploidy == "squaremodel"){
-    Plot_errors <- function(errordf, minimadf,sample, outfile) {
-        p <- ggplot2::ggplot() +
-            geom_raster(data=errordf, aes(x=cellularity, y=ploidy, fill=1/error)) +
-            geom_point(data=minimadf, aes(x=cellularity, y=ploidy, alpha=min(error)/error), shape=16) +
-            scale_fill_gradient(low="green", high="red") +
-            ggtitle(sample) +
-            theme(plot.title = element_text(hjust = 0.5))
-        suppressMessages(ggsave(outfile, plot = p))
+Add_normal_segments <- function(segments,chromlengths){
+    # intialize empty dataframe
+    New_Segments <- data.frame(Chromosome = integer(), Start = integer(), End = integer(), Segment_Mean = numeric())
+    # iterate over chromosomes
+    for(chr in seq(1,22)){
+        Segments_chr <- segments[Segments$Chromosome == chr,c(2,3,4,6)]
+                                        # iterate over rows
+        for(i in 1:nrow(Segments_chr)){
+            if(i == 1){
+                start <- 1
+                end <- Segments_chr$Start[i] -1
+                New_Segments <- rbind(New_Segments, data.frame(Chromosome=chr,Start=start,End=end,Segment_Mean=0))
+            }else{
+                start <- Segments_chr$End[i-1] + 1
+                end <- Segments_chr$Start[i] - 1
+                New_Segments <- rbind(New_Segments, data.frame(Chromosome=chr,Start=start,End=end,Segment_Mean=0))
+            }
+            New_Segments <- rbind(New_Segments,Segments_chr[i,])
+        }
+        start <- Segments_chr$End[i] +1
+        end <- chromlengths[chr,3]
+        if(end > start){
+            New_Segments <- rbind(New_Segments, data.frame(Chromosome=chr,Start=start,End=end,Segment_Mean=0))
+        }
     }
-
-}else{
-    Plot_errors <- function(tempdf, minimadf,outfile) {
-        p <- ggplot() +
-            scale_y_continuous(name = "relative error", limits = c(0,1.05), expand=c(0,0)) +
-            scale_x_continuous(name = "cellularity (%)") +
-            geom_vline(xintercept = seq(from = 10, to = 100, by = 10), color = "#666666", linetype = "dashed") +
-            geom_point(aes(y=errorlist, x=cellularity), data=tempdf) +
-            geom_point(aes(y=rerror, x=minima), data=minimadf, color = 'red') +
-            theme_classic() + theme(
-                                  axis.line = element_line(color='black'), axis.ticks = element_line(color='black'), axis.text = element_text(color='black')) +
-            ggtitle(paste0(sample, " - errorlist")) +
-            theme(plot.title = element_text(hjust = 0.5))
-        suppressMessages(ggsave(outfile, plot = p))
-    }
+    return(unique(New_Segments))
 }
 
+if(exists('ploidy')){
+    if(ploidy == "squaremodel"){
+        Plot_errors <- function(errordf, minimadf,sample, outfile) {
+            p <- ggplot2::ggplot() +
+                geom_raster(data=errordf, aes(x=cellularity, y=ploidy, fill=1/error)) +
+                geom_point(data=minimadf, aes(x=cellularity, y=ploidy, alpha=min(error)/error), shape=16) +
+                scale_fill_gradient(low="green", high="red") +
+                ggtitle(sample) +
+                theme(plot.title = element_text(hjust = 0.5))
+            suppressMessages(ggsave(outfile, plot = p))
+        }
+
+    }else{
+        Plot_errors <- function(tempdf, minimadf,outfile) {
+            p <- ggplot() +
+                scale_y_continuous(name = "relative error", limits = c(0,1.05), expand=c(0,0)) +
+                scale_x_continuous(name = "cellularity (%)") +
+                geom_vline(xintercept = seq(from = 10, to = 100, by = 10), color = "#666666", linetype = "dashed") +
+                geom_point(aes(y=errorlist, x=cellularity), data=tempdf) +
+                geom_point(aes(y=rerror, x=minima), data=minimadf, color = 'red') +
+                theme_classic() + theme(
+                                      axis.line = element_line(color='black'), axis.ticks = element_line(color='black'), axis.text = element_text(color='black')) +
+                ggtitle(paste0(sample, " - errorlist")) +
+                theme(plot.title = element_text(hjust = 0.5))
+            suppressMessages(ggsave(outfile, plot = p))
+        }
+    }
+}
 # Function to run ACE from segmentdata
-Run_ACE <- function(segmentdata, Segments, ploidy, sample, method, penalty, fit_out, errorgraph_out){
+Run_ACE <- function(segmentdata, Segments, ploidy, sample, method, penalty,penploidy, fit_out, errorgraph_out){
     # calculate standard
     standard <- median(rep(segmentdata$values,segmentdata$lengths))
     # create empty factors
@@ -78,9 +110,9 @@ Run_ACE <- function(segmentdata, Segments, ploidy, sample, method, penalty, fit_
             expected[p] <- standard*(p*fraction[i-4] + 2*(1-fraction[i-4]))/(fraction[i-4]*q + 2*(1-fraction[i-4]))
         }
         for (j in seq_along(segmentdata$values)) {
-            if(method=='RMSE') {temp[j] <- (min(abs(segmentdata$values[j]-expected),0.5)/(fraction[i-4]^penalty))^2}
-            else if(method=='SMRE') {temp[j] <- sqrt(min(abs(segmentdata$values[j]-expected),0.5)/(fraction[i-4]^penalty))}
-            else if(method=='MAE') {temp[j] <- min(abs(segmentdata$values[j]-expected),0.5)/(fraction[i-4]^penalty)}
+            if(method=='RMSE') {temp[j] <- (min(abs(segmentdata$values[j]-expected),0.5)*(1+abs(q-2))^penploidy/(fraction[i-4]^penalty))^2}
+            else if(method=='SMRE') {temp[j] <- sqrt(min(abs(segmentdata$values[j]-expected),0.5)*(1+abs(q-2))^penploidy/(fraction[i-4]^penalty))}
+            else if(method=='MAE') {temp[j] <- min(abs(segmentdata$values[j]-expected),0.5)*(1+abs(q-2))^penploidy/(fraction[i-4]^penalty)}
             else {print("Not a valid method")}
         }
         if(method=='RMSE') {errorlist[i-4] <- sqrt(sum(temp*segmentdata$lengths)/sum(segmentdata$lengths))}
@@ -127,10 +159,11 @@ Run_ACE <- function(segmentdata, Segments, ploidy, sample, method, penalty, fit_
     tempdf <- data.frame(cellularity,errorlist=errorlist/max(errorlist))
     minimadf <- data.frame(minima=minima*100,rerror)
     bfi <- tail(which(rerror==min(rerror)))
-    fitpicker <- matrix(ncol = 16, nrow = 1)
+    fitpicker <- matrix(ncol = 17, nrow = 1)
     colnames(fitpicker) <- c("sample","likely_fit","ploidy","standard","rerror","fit_1","fit_2","fit_3","fit_4","fit_5","fit_6","fit_7","fit_8","fit_9","fit_10","fit_11","fit_12")
     fitpicker[1,1] <- sample
     fitpicker[1,2] <- minima[bfi]
+    fitpicker[1,3] <- q
     fitpicker[1,5] <- min(rerror)
     for (m in seq_along(minima)) {
         fitpicker[1,m+5] <- minima[m]
@@ -146,8 +179,6 @@ Run_ACE <- function(segmentdata, Segments, ploidy, sample, method, penalty, fit_
         line1 <- paste0("Cellularity: ", minima[m])
         line2 <- paste0("Relative error: ", round(rerror[m], digits = 3))
     }
-    
-    
     # Plot errorgraph
     Plot_errors(tempdf, minimadf,errorgraph_out)
     # Write fittable
@@ -216,8 +247,6 @@ Run_squaremodel <- function(segmentdata, Segments,
             }
         }
     }
-    round(errormatrix, digits = 10)
-    round(listoferrors, digits = 10)
     errordf <- data.frame(ploidy=listofploidy,
                           cellularity=listofcellularity,
                           error=listoferrors/max(listoferrors),
@@ -229,4 +258,14 @@ Run_squaremodel <- function(segmentdata, Segments,
     Plot_errors(errordf, minimadf,sample, errorgraph_out)
     # Write fits to table
     write.table(minimadf, file = fit_out, row.names = F, quote = F, sep = "\t")
+}
+
+read_ACE_fit <- function(fit){
+    fits <- read.table(fit,header=T)
+    if(grepl("squaremodel",fit)){
+        cellularity <- data.frame(ploidy = fits[1,1], cellularity = fits[1,2], error = fits[1,3])
+    }else{
+        cellularity <- data.frame(ploidy = fits[1,3], cellularity = fits[1,2], error = fits[1,5])
+    }
+    return(cellularity)
 }

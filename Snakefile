@@ -37,7 +37,8 @@ rule ACE:
         binsize = config['ACE']['binsize'],
         method = config['ACE']["method"],
         penalty = config['ACE']['penalty'],
-        penploidy = config['ACE']['penploidy']
+        penploidy = config['ACE']['penploidy'],
+        chromlengths = "reference/Chrom_lengths.txt"
     conda:
         "envs/ACE.yaml"
     script:

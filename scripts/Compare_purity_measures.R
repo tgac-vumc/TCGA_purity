@@ -16,6 +16,7 @@
 #-------------------------------------------------------------------------------
 suppressWarnings(library(ggplot2))
 suppressMessages(suppressWarnings(library(dplyr)))
+source('scripts/ACE_functions.R')
 #-------------------------------------------------------------------------------
 # 1.1 Parse snakemake objects
 #-------------------------------------------------------------------------------
@@ -24,7 +25,7 @@ if(exists("snakemake")){
     Purities <- snakemake@input[["Purities"]]
     Scatterplots_out <-  snakemake@output[["Scatterplots"]]
 }else{
-    ACE_fits <- Sys.glob("../data/copynumber/ACE/*/2N/fits.txt")
+    ACE_fits <- Sys.glob("../data/copynumber/ACE/*/**/fits.txt")
     Purities <-  "../data/purity/Tumor_purities.tsv"
     Scatterplots_out <- "../data/copynumber/ACE/TCGA-95-7039/2N/errorgraph.svg"
 }
@@ -38,10 +39,8 @@ ACE_purities <-
                 purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x, header=TRUE)[1,2])) %>%
     tidyr::unnest(cols = c(sample, ACE))
 
-
 # read TCGA purities
 Purities <- read.delim(Purities, stringsAsFactors = F)
-
 #-------------------------------------------------------------------------------
 # 1.2 Join data
 #-------------------------------------------------------------------------------
@@ -86,20 +85,4 @@ for(i in 1:nrow(Measure_combinations)){
 
 svg(Scatterplots_out, width = 12, height = 9)
 cowplot::plot_grid(plotlist = plotlist, align = "hv")
-dev.off()
-
-
-svg(paste0(gsub(".svg","",Scatterplots_out),"_ACE.svg"), height = 4, width = 4)
-ggpubr::ggscatter(Purities, x = "ACE", y = "ABSOLUTE",
-                           add = "reg.line",
-                           add.params = list(color = "red"),
-                           conf.int = TRUE,
-                           palette = "jco",
-                           alpha = 0.5,
-                           size = 1,
-                           xlim = c(0,1),
-                           ylim = c(0,1))+
-    ggpubr::stat_cor(label.x = 0, label.y = 0) +
-    geom_abline(intercept = 0, slope = 1,linetype="dashed")
-    
 dev.off()

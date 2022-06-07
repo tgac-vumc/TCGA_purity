@@ -3,8 +3,8 @@ all:
     data_dir: "../data/"        # Specify main data directory
 
 ACE:
-    binsize: 10
-    ploidies: ["2N","4N", "squaremodel"]
+    binsize: 100000
+    ploidies: ["2N","3N","4N","5N","squaremodel"]
     method: "RMSE"
     penalty: 0.5
     penploidy: 0.5
