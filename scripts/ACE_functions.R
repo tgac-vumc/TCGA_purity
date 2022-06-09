@@ -19,6 +19,145 @@
 #-------------------------------------------------------------------------------
 suppressWarnings(library(ggplot2))
 #-------------------------------------------------------------------------------
+segmentstotemplate <- function(segmentdf, chrci=2, startci=3, endci=4, binsci=5, meanci=6, seci, sdci, log=FALSE) {
+  if(is(segmentdf, "character")) {segmentdf <- try(read.table(segmentdf, header = TRUE, comment.char = "", sep = "\t"))}
+  if (inherits(segmentdf, "try-error")) {print(paste0("could not find ", segmentdf))
+  } else {
+    if(log==TRUE){log<-exp(1)}
+    if(log) {
+      segmentdf[,meanci] <- log^segmentdf[,meanci]
+    }
+    segments <- rep(segmentdf[,meanci],segmentdf[,binsci])
+    chr <- rep(segmentdf[,chrci],segmentdf[,binsci])
+    chr <- gsub("chr","",chr,ignore.case = TRUE)
+    if(!missing(sdci)) {
+      copynumbers <- c()
+      for (i in seq_along(segmentdf[,1])) {copynumbers <- append(copynumbers,rnorm(n=segmentdf[i,binsci],
+                                                                                  mean=segmentdf[i,meanci],
+                                                                                  sd=segmentdf[i,sdci]))}
+    } else if(!missing(seci)) {
+      copynumbers <- c()
+      for (i in seq_along(segmentdf[,1])) {copynumbers <- append(copynumbers,rnorm(n=segmentdf[i,binsci],
+                                                                                  mean=segmentdf[i,meanci],
+                                                                                  sd=(segmentdf[i,seci]*sqrt(segmentdf[i,binsci]))))}
+    } else {
+      copynumbers <- segments
+    }
+    bin <- seq_along(segments)
+    start <- c()
+    end <- c()
+    for (i in seq_along(segmentdf[,1])) {
+      start <- append(start,round(seq(from=segmentdf[i,startci],by=(segmentdf[i,endci]+1-segmentdf[i,startci])/segmentdf[i,binsci],
+                                length.out=segmentdf[i,binsci])))
+      end <- append(end,round(seq(to=segmentdf[i,endci],by=(segmentdf[i,endci]+1-segmentdf[i,startci])/segmentdf[i,binsci],
+                            length.out=segmentdf[i,binsci])))
+    }
+    template <- data.frame(bin,chr,start,end,copynumbers,segments)
+    return(template)
+  }
+}
+squaremodel <- function(template, QDNAseqobjectsample = FALSE, prows=100, ptop=5, pbottom=1, method = 'RMSE',
+                        exclude = c("X","Y"), sgc = c(), penalty = 0, penploidy = 0, 
+                        cellularities = seq(5,100), highlightminima = TRUE, standard,errorgraph_out) {
+  if(QDNAseqobjectsample) {template <- objectsampletotemplate(template, QDNAseqobjectsample)}
+  template <- template[!template$chr %in% exclude,]
+  if(missing(standard) || !is(standard, "numeric")) { standard <- median(template$segments, na.rm = T) }
+  templateh <- template[template$chr %in% sgc,]
+  template <- template[!template$chr %in% sgc,]
+  segmentdata <- rle(as.vector(na.exclude(template$segments)))
+  segmentdatah <- rle(as.vector(na.exclude(templateh$segments)))
+  fraction <- sort(cellularities)/100
+  error <- c()
+  errormatrix <- matrix(nrow=(prows+1),ncol=length(fraction))
+  listofploidy <- c()
+  listofcellularity <- c()
+  listoferrors <- c()
+  for (t in seq(0,prows)) {
+    ploidy <- ptop-((ptop-pbottom)/prows)*t
+    listofploidy <- append(listofploidy, rep(ploidy,length(fraction)))
+    expected <- c()
+    hexpected <- c()
+    temp <- c()
+    errorlist <- c()
+    for (i in seq_along(fraction)) {
+      for (p in seq(1,12)) {
+        expected[p] <- standard*(p*fraction[i] + 2*(1-fraction[i]))/(fraction[i]*ploidy + 2*(1-fraction[i]))
+        hexpected[p] <- standard*(p*fraction[i] + 1*(1-fraction[i]))/(fraction[i]*ploidy + 2*(1-fraction[i]))
+      }
+      for (j in seq_along(segmentdata$values)) {
+        if(method=='RMSE') {temp[j] <- (min(abs(segmentdata$values[j]-expected),0.5)*(1+abs(ploidy-2))^penploidy/(fraction[i]^penalty))^2}
+        else if(method=='SMRE') {temp[j] <- sqrt(min(abs(segmentdata$values[j]-expected),0.5)*(1+abs(ploidy-2))^penploidy/(fraction[i]^penalty))}
+        else if(method=='MAE') {temp[j] <- min(abs(segmentdata$values[j]-expected),0.5)*(1+abs(ploidy-2))^penploidy/(fraction[i]^penalty)}
+        else {print("Not a valid method")}
+      }
+      for (k in seq_along(segmentdatah$values)) {
+        if(method=='RMSE') {temp[j+k] <- (min(abs(segmentdatah$values[k]-hexpected),0.5)/(fraction[i]^penalty))^2}
+        else if(method=='SMRE') {temp[j+k] <- sqrt(min(abs(segmentdatah$values[k]-hexpected),0.5)/(fraction[i]^penalty))}
+        else if(method=='MAE') {temp[j+k] <- min(abs(segmentdatah$values[k]-hexpected),0.5)/(fraction[i]^penalty)}
+        else {print("Not a valid method")}
+      }
+      lengths <- c(segmentdata$lengths, segmentdatah$lengths)
+      if(method=='RMSE') {errorlist[i] <- sqrt(sum(temp*lengths)/sum(lengths))}
+      else if(method=='SMRE') {errorlist[i] <- sum(temp*lengths)/sum(lengths)^2}
+      else if(method=='MAE') {errorlist[i] <- sum(temp*lengths)/sum(lengths)}
+    }
+    listofcellularity <- append(listofcellularity, fraction)
+    listoferrors <- append(listoferrors, errorlist)
+    errormatrix[t+1,] <- errorlist
+    
+  }
+  minimat <- matrix(nrow=(prows+1),ncol=length(fraction))
+  for (i in seq(1,prows+1)) {
+    for (j in seq(1,length(fraction))) {
+      if (i==1|i==(prows+1)) {
+        minimat[i,j] <- FALSE
+      } else if (j==length(fraction)) {
+        minimat[i,j] <- errormatrix[i,j]==min(errormatrix[seq(i-1,i+1),seq(j-1,j)])
+      } else {
+        minimat[i,j] <- errormatrix[i,j]==min(errormatrix[seq(i-1,i+1),seq(j-1,j+1)])
+      }
+    }
+  }
+  round(errormatrix, digits = 10)
+  round(listoferrors, digits = 10)
+  errordf <- data.frame(ploidy=listofploidy,
+                        cellularity=listofcellularity,
+                        error=listoferrors/max(listoferrors),
+                        minimum=as.vector(t(minimat)))
+  minimadf <- errordf[errordf$minimum==TRUE,]
+  minimadf <- minimadf[order(minimadf$error,-minimadf$cellularity),]
+  if(highlightminima==TRUE){
+      tempplot <- ggplot2::ggplot() +
+          geom_raster(data=errordf, aes(x=cellularity, y=ploidy, fill=1/error)) +
+          geom_point(data=minimadf, aes(x=cellularity, y=ploidy, alpha=min(error)/error), shape=16) +
+          scale_fill_gradient(low="green", high="red") +
+          ggtitle("Matrix of errors") +
+          theme(plot.title = element_text(hjust = 0.5))
+  } else {
+      tempplot <- ggplot2::ggplot() +
+          geom_raster(data=errordf, aes(x=cellularity, y=ploidy, fill=1/error)) +
+          scale_fill_gradient(low="green", high="red") +
+          ggtitle("Matrix of errors") +
+          theme(plot.title = element_text(hjust = 0.5))
+  }
+  svg(errorgraph_out)
+  tempplot
+  dev.off()
+
+  
+  return(list(method=method, 
+              penalty=penalty, 
+              penploidy=penploidy,
+              standard=standard,
+              errormatrix=errormatrix, 
+              minimatrix = minimat, 
+              errordf=errordf, 
+              minimadf=minimadf, 
+              matrixplot=tempplot))
+  
+}
+
+
 # Function to fix segments
 Concatenate_lengths <- function(segmentvalues,segmentdata){
     # if segmentdata is valid do nothing

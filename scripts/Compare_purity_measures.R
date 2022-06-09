@@ -62,7 +62,7 @@ Purity_measures <- c("ESTIMATE","ABSOLUTE","LUMP","IHC","ACE")
 #Convert purities to numeric
 Purities[Purity_measures] <- sapply(Purities[Purity_measures],function(x)as.numeric(gsub(",","\\.",x)))
 #Exclude ACE fit=1
-Purities <- Purities[Purities$ACE != 1,]
+#Purities <- Purities[Purities$ACE != 1,]
 # Obtain measure combinations
 Measure_combinations <- t(combn(Purity_measures,2))
 

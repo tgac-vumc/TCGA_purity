@@ -34,11 +34,9 @@ rule ACE:
         fit = "../data/copynumber/ACE/{sample}/{ploidy}/fits.txt",
         errorgraph = "../data/copynumber/ACE/{sample}/{ploidy}/errorgraph.svg"
     params:
-        binsize = config['ACE']['binsize'],
         method = config['ACE']["method"],
         penalty = config['ACE']['penalty'],
-        penploidy = config['ACE']['penploidy'],
-        chromlengths = "reference/Chrom_lengths.txt"
+        penploidy = config['ACE']['penploidy']
     conda:
         "envs/ACE.yaml"
     script:
@@ -57,22 +55,3 @@ rule Compare_purity_measures:
         "envs/R.yaml"
     script:
         "scripts/Compare_purity_measures.R"
-
-#+++++++++++++++++++++++++++++++++++++ 4 ESTIMATE CONSENSUS PURITY WITH ACE  ++++++++++++++++++++++++++++++++++++++
-# Estimate consensus purity including ACE (instead of ABSOLUTE)
-"""
-rule Consensus_purity_estimation:
-    input:
-        segments = "../data/copynumber/segments/{sample}_segments.txt"
-    output:
-        fit = "../data/copynumber/ACE/{sample}/2N/fits.txt",
-        errorgraph =  "../data/copynumber/ACE/{sample}/2N/errorgraph.svg"
-    params:
-        ploidies = config['ACE']['ploidies'],
-        method = config['ACE']["method"],
-        penalty = config['ACE']['penalty']
-    conda:
-        "envs/ACE.yaml"
-    script:
-        "scripts/ACE.R"
-"""

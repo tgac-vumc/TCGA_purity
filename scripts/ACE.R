@@ -50,36 +50,13 @@ source("scripts/ACE_functions.R")
 #-------------------------------------------------------------------------------
 # read segments
 Segments <- read.delim(Segments, stringsAsFactors = F)
-# read chromlengths
-chromlengths <- read.delim(chromlengths)
-
 #-------------------------------------------------------------------------------
 # 1.2 Reformat data
 #-------------------------------------------------------------------------------
-# exclude sex chromosomes
-Segments <- Segments[!Segments$Chromosome %in% c("X","Y"),]
-# Add normal segments
-Segments <- Add_normal_segments(Segments,chromlengths)
-# Calculate segment width
-Segments$Width <- Segments$End - Segments$Start
-# obtain features and segment values
-features <- paste0(Segments$Chromosome,":",Segments$Start,"-",Segments$End)
-# convert log2 to copynumber 
-segmentvalues <- 2^Segments$Segment_Mean
-Segments$Segment_Mean
-segmentdata_test
-# create RLE
-segmentdata <- rle(as.vector(na.exclude(setNames(segmentvalues, features))))
-# expand segments by binsize (round to upper non-zero integer)
-segmentdata$lengths <- ceiling(Segments$Width / binsize)
-# Concatenate segment lengths
-segmentdata <- suppressWarnings(Concatenate_lengths(segmentvalues,segmentdata))
+# Obtain template
+template <- segmentstotemplate(Segments,log=2)
 #-------------------------------------------------------------------------------
 # 2.2 Run ACE
 #-------------------------------------------------------------------------------
-if(ploidy == "squaremodel"){
-    Run_squaremodel(segmentdata, Segments, sample, method, penalty, penploidy, fit_out, errorgraph_out)
-
-}else{
-    Run_ACE(segmentdata, Segments, ploidy, sample, method, penalty,penploidy, fit_out, errorgraph_out)
-}
+ACE_out <- squaremodel(template, penalty = penalty, penploidy = penploidy,errorgraph_out = errorgraph_out)
+write.table(ACE_out$minimadf,file = fit_out,row.names = F,quote = F,sep="\t")
