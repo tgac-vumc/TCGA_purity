@@ -7,12 +7,11 @@ Sample_dict = Get_Sample_dict(data_dir)
 Projects = Sample_dict.keys()
 Samples = set([sample for project  in Projects for sample in Sample_dict[project].values()])
 paths = Get_file_paths(Sample_dict, data_dir)
-Purity_Measures = ['ESTIMATE','ABSOLUTE','LUMP','IHC', 'ACE']
 #-------------------------------------------------------------------------------------------------------------------
 # 0.3 specify target rules
 rule all:
     input:
-        expand("../plots/purity/Scatterplots_purity_{ploidy}.svg", ploidy = config['ACE']['ploidies'])
+        expand("../plots/purity/Scatterplots_purity_{ploidy}_{project}.svg", project = ["LUAD","LUSC"], ploidy = config['ACE']['ploidies'])
 
 #++++++++++++++++++++++++++++++++++++++++++++++++ 1 PREPARE DATA  +++++++++++++++++++++++++++++++++++++++++++++++++
 # Migrate segmentfile
@@ -41,16 +40,18 @@ rule ACE:
         "envs/ACE.yaml"
     script:
         "scripts/ACE.R"
-    
+
 #++++++++++++++++++++++++++++++++++++++++++ 3 COMPARE PURITY MEASURES   +++++++++++++++++++++++++++++++++++++++++++
 # Plot scatterplots of purity estimates of different measures
 
 rule Compare_purity_measures:
     input:
-        ACE_fits = lambda wildcards: expand("../data/copynumber/ACE/{sample}/"+ wildcards.ploidy + "/fits.txt", sample = Samples),
-        Purities = "../data/purity/Tumor_purities.tsv"
+        ACE_fits = lambda wildcards: expand("../data/copynumber/ACE/{sample}/"+wildcards.ploidy+"/fits.txt", sample = Sample_dict["TCGA-"+wildcards.project].values()),
+        Purities = "../data/purity/Tumor_purities.tsv",
     output:
-        Scatterplots = "../plots/purity/Scatterplots_purity_{ploidy}.svg",
+        Scatterplots = "../plots/purity/Scatterplots_purity_{ploidy}_{project}.svg",
+        Tumor_purities = "../data/{project}/ACE_Tumor_purities_{ploidy}.tsv",
+        Samples_to_exclude = "../data/{project}/data/Samples_to_exclude_{ploidy}.txt"
     conda:
         "envs/R.yaml"
     script:

@@ -23,10 +23,13 @@ source('scripts/ACE_functions.R')
 if(exists("snakemake")){
     ACE_fits <- snakemake@input[["ACE_fits"]]
     Purities <- snakemake@input[["Purities"]]
+    Purities_out <-  snakemake@output[["Tumor_purities"]]
     Scatterplots_out <-  snakemake@output[["Scatterplots"]]
+    Samples_to_exclude_out <-  snakemake@output[["Samples_to_exclude"]]
 }else{
     ACE_fits <- Sys.glob("../data/copynumber/ACE/*/**/fits.txt")
     Purities <-  "../data/purity/Tumor_purities.tsv"
+    Purities_out <- "../data/purity/ACE_Tumor_purities_TCGA-LUAD.tsv"
     Scatterplots_out <- "../data/copynumber/ACE/TCGA-95-7039/2N/errorgraph.svg"
 }
 #-------------------------------------------------------------------------------
@@ -36,8 +39,20 @@ if(exists("snakemake")){
 ACE_purities <-
     tibble::tribble(
                 ~sample,~ACE,
-                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x, header=TRUE)[1,2])) %>%
+                purrr::map_chr(ACE_fits,~strsplit(.x,"/")[[1]][5]), purrr::map_dbl(ACE_fits, ~read.table(.x,header=T)[1,2])) %>%
     tidyr::unnest(cols = c(sample, ACE))
+
+
+
+Samples_to_exclude <- ACE_purities[ACE_purities$ACE == 1,"sample"]
+print(nrow(ACE_purities))
+
+ACE_purities <-
+    ACE_purities %>%
+    dplyr::filter(!sample %in% Samples_to_exclude) %>%
+    unique()
+
+print(nrow(ACE_purities))
 
 # read TCGA purities
 Purities <- read.delim(Purities, stringsAsFactors = F)
@@ -86,3 +101,9 @@ for(i in 1:nrow(Measure_combinations)){
 svg(Scatterplots_out, width = 12, height = 9)
 cowplot::plot_grid(plotlist = plotlist, align = "hv")
 dev.off()
+
+# write to file
+write.table(ACE_purities, file = Purities_out, quote = F, row.names = F,sep = "\t")
+
+# write to file
+write.table(Samples_to_exclude, file = Samples_to_exclude_out, quote = F, row.names = F,sep = "\t")
